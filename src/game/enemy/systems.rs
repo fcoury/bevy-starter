@@ -1,12 +1,6 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 use rand::random;
 
-use crate::{
-    events::GameOver,
-    player::{components::Player, systems::PLAYER_SIZE},
-    score::resources::Score,
-};
-
 use super::{components::Enemy, resources::EnemySpawnTimer};
 
 pub const NUMBER_OF_ENEMIES: usize = 4;
@@ -123,34 +117,6 @@ pub fn confine_enemy_movement(
     }
 }
 
-pub fn enemy_hit_player(
-    mut commands: Commands,
-    mut game_over_event_writer: EventWriter<GameOver>,
-    mut player_query: Query<(Entity, &Transform), With<Player>>,
-    enemy_query: Query<&Transform, With<Enemy>>,
-    asset_server: Res<AssetServer>,
-    audio: Res<Audio>,
-    score: Res<Score>,
-) {
-    if let Ok((player_entity, player_transform)) = player_query.get_single_mut() {
-        for enemy_transform in enemy_query.iter() {
-            let distance = player_transform
-                .translation
-                .distance(enemy_transform.translation);
-            if distance < (PLAYER_SIZE + ENEMY_SIZE) / 2.0 {
-                println!("Player hit!");
-
-                let sound_effect = asset_server.load("audio/explosionCrunch_000.ogg");
-                audio.play(sound_effect);
-
-                commands.entity(player_entity).despawn();
-
-                game_over_event_writer.send(GameOver { score: score.value });
-            }
-        }
-    }
-}
-
 pub fn tick_enemy_spawn_timer(time: Res<Time>, mut enemy_spawn_timer: ResMut<EnemySpawnTimer>) {
     enemy_spawn_timer.timer.tick(time.delta());
 }
@@ -178,5 +144,11 @@ pub fn spawn_enemies_over_time(
                 direction: Vec2::new(rand::random::<f32>(), rand::random::<f32>()).normalize(),
             },
         ));
+    }
+}
+
+pub fn despawn_enemies(mut commands: Commands, enemy_query: Query<Entity, With<Enemy>>) {
+    for enemy_entity in enemy_query.iter() {
+        commands.entity(enemy_entity).despawn();
     }
 }

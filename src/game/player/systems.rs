@@ -1,8 +1,12 @@
 use bevy::{prelude::*, window::PrimaryWindow};
 
 use crate::{
-    score::resources::Score,
-    star::{components::Star, systems::STAR_SIZE},
+    events::GameOver,
+    game::{
+        enemy::{Enemy, ENEMY_SIZE},
+        score::Score,
+        star::{Star, STAR_SIZE},
+    },
 };
 
 use super::components::Player;
@@ -24,6 +28,12 @@ pub fn spawn_player(
         },
         Player {},
     ));
+}
+
+pub fn despawn_player(mut commands: Commands, player_query: Query<Entity, With<Player>>) {
+    if let Ok(player) = player_query.get_single() {
+        commands.entity(player).despawn();
+    }
 }
 
 pub fn player_movement(
@@ -106,6 +116,34 @@ pub fn player_hit_star(
                 audio.play(sound_effect);
 
                 commands.entity(star_entity).despawn();
+            }
+        }
+    }
+}
+
+pub fn enemy_hit_player(
+    mut commands: Commands,
+    mut game_over_event_writer: EventWriter<GameOver>,
+    mut player_query: Query<(Entity, &Transform), With<Player>>,
+    enemy_query: Query<&Transform, With<Enemy>>,
+    asset_server: Res<AssetServer>,
+    audio: Res<Audio>,
+    score: Res<Score>,
+) {
+    if let Ok((player_entity, player_transform)) = player_query.get_single_mut() {
+        for enemy_transform in enemy_query.iter() {
+            let distance = player_transform
+                .translation
+                .distance(enemy_transform.translation);
+            if distance < (PLAYER_SIZE + ENEMY_SIZE) / 2.0 {
+                println!("Player hit!");
+
+                let sound_effect = asset_server.load("audio/explosionCrunch_000.ogg");
+                audio.play(sound_effect);
+
+                commands.entity(player_entity).despawn();
+
+                game_over_event_writer.send(GameOver { score: score.value });
             }
         }
     }

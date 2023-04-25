@@ -1,7 +1,8 @@
 use bevy::app::AppExit;
 use bevy::{prelude::*, window::PrimaryWindow};
 
-use crate::events::GameOver;
+use crate::game::SimulationState;
+use crate::{AppState, GameOver};
 
 pub fn spawn_camera(mut commands: Commands, window_query: Query<&Window, With<PrimaryWindow>>) {
     let window = window_query.get_single().unwrap();
@@ -12,14 +13,30 @@ pub fn spawn_camera(mut commands: Commands, window_query: Query<&Window, With<Pr
     });
 }
 
+pub fn transition_between_game_states(
+    mut commands: Commands,
+    keyboard_input: Res<Input<KeyCode>>,
+    app_state: Res<State<AppState>>,
+) {
+    if keyboard_input.just_pressed(KeyCode::G) && app_state.0 != AppState::Game {
+        commands.insert_resource(NextState(Some(AppState::Game)));
+    }
+
+    if keyboard_input.just_pressed(KeyCode::M) && app_state.0 != AppState::MainMenu {
+        commands.insert_resource(NextState(Some(AppState::MainMenu)));
+        commands.insert_resource(NextState(Some(SimulationState::Paused)));
+    }
+}
+
 pub fn exit_game(keyboard_input: Res<Input<KeyCode>>, mut exit: ResMut<Events<AppExit>>) {
     if keyboard_input.just_pressed(KeyCode::Escape) {
         exit.send(AppExit);
     }
 }
 
-pub fn handle_game_over(mut game_over_event_reader: EventReader<GameOver>) {
+pub fn handle_game_over(mut commands: Commands, mut game_over_event_reader: EventReader<GameOver>) {
     for event in game_over_event_reader.iter() {
         println!("Game over! Score: {}", event.score);
+        commands.insert_resource(NextState(Some(AppState::GameOver)))
     }
 }
